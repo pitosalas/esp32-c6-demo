@@ -18,7 +18,7 @@ All runtimes below are estimates from typical numbers, not measurements.
 - ESP32-D0WD-V3 with a 2.8 in 320x240 ILI9341 touch screen. Details are in [`yellow_pad/NOTES.md`](yellow_pad/NOTES.md), under "The hardware".
 - USB is **micro-USB** (CH340). Don't use a USB-C to USB-C cable: the board lacks the resistors that make a USB-C source switch on.
 - Power in: 5 V through USB, or through the 4-pin JST 1.25 mm "P1" connector (VIN, TX, RX, GND). Its 3.3 V comes from an **AMS1117** regulator, which needs about 4.4 V in or more because it drops about 1.1 V.
-- Rough draw: about 100–150 mA (Yellow Pad notes), maybe up to 200 mA with the backlight at full.
+- **Measured (2026-11-10): about 0.1 A at 5 V**, with the CPU at 80 MHz and the backlight at half. That was before idle dimming and before the ROS tab (Wi-Fi). Earlier estimate: 100–150 mA, maybe up to 200 mA with the backlight at full.
 - So the CYD effectively needs a real 5 V. A raw LiPo (3.0–4.2 V) or 3 AA/AAA cells won't run it reliably without a boost converter. It has no charging or low-voltage cutoff of its own.
 
 ## Parts on hand
@@ -60,7 +60,7 @@ Listed as "LiPo Battery Module, USB-C Rechargeable 1200mAh, 3.3V 5V USB Output".
 - It combines the cell, charger and regulated outputs in one unit, so **it doesn't need the extra boost converter the TP4056 does.**
 - C6 board: either the **USB-A 5 V output to its USB-C port** (USB-A to USB-C cable, no soldering), or the **3.3 V header to its 3V3 and GND pins**, which skips the board's regulator. Check the pins before connecting.
 - CYD: a short USB-A to micro-USB cable, or the 5 V header to the CYD's P1 connector (5V → VIN, GND → GND). **Never use the 3.3 V, BAT or JST outputs for the CYD.** See "Using the PM11 with the CYD" below.
-- Rough runtime (1200 mAh × 3.7 V ≈ 4.4 Wh, about 85% efficiency): **about 5–6 hours** from 5 V and **about 8–9 hours** from 3.3 V on the C6 board. The Yellow Pad notes estimate 5–8 hours on the CYD.
+- Rough runtime (1200 mAh × 3.7 V ≈ 4.4 Wh, about 85% efficiency): **about 5–6 hours** from 5 V and **about 8–9 hours** from 3.3 V on the C6 board. On the CYD at the measured 0.1 A (0.5 W): about 3.8 Wh usable ÷ 0.5 W ≈ **7.5 hours** to empty, or **about 5.5 hours** stopping at one LED.
 
 ### 3 x AA battery pack, no electronics yet
 The cell type (alkaline or NiMH) isn't decided.
@@ -104,7 +104,7 @@ If you ever want to lower it: the current is set by **R3** ("Rprog"), a tiny 060
 
 | Setup | Boards | Rechargeable | Rough runtime | Notes |
 |---|---|---|---|---|
-| NULLLAB PM11 → USB | both | yes | 5–6 h (C6), 5–8 h (CYD) | Simplest. No low-battery cutoff, resets when plugged in. |
+| NULLLAB PM11 → USB | both | yes | 5–6 h (C6), ~7.5 h (CYD, ~5.5 h to one LED) | Simplest. No low-battery cutoff, resets when plugged in. |
 | EEMB LiPo → TP4056 → MiniBoost → 5 V/VIN | both | yes | about 6–7 h | Soldering needed. Two MiniBoosts means both boards can be wired this way. Charges at 1 A unless R3 is swapped. |
 | AAA holder → MiniBoost → 5 V/VIN | both | no (NiMH optional) | 5–6 h (C6), 3–5 h (CYD) | Switched, no soldering at the battery end. |
 | AA pack → MiniBoost → 5 V/VIN | both | no (NiMH optional) | 10–12 h (C6), 6–10 h (CYD) | Longest runtime. Needs a switch. |
@@ -133,7 +133,7 @@ Its 56×40 mm footprint and two M4 holes fit behind the CYD. Standoffs or double
 
 ### Day to day
 - **Switch OFF after every session.** No low-battery cutoff, so it will drain the cell even when idle.
-- Recharge when you're down to **one LED**. Expect about 5–8 hours of driving per charge.
+- Recharge when you're down to **one LED**. Expect about 5.5 hours of driving per charge (from the measured 0.1 A). The pad's `Run h:mm` counter shows the time used since you marked it charged (see `yellow_pad/NOTES.md`).
 - Charge with the switch **ON**. If the switch is OFF, USB-C only passes through to the CYD and the battery doesn't charge.
 - Bench use: switch OFF, plug in USB-C, and the CYD runs from USB with the battery out of the circuit.
 - Don't plug or unplug USB-C while driving. The pad will probably reset, Bluetooth drops and the robot stops.
