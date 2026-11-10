@@ -42,16 +42,24 @@ HiLetgo 3-pack: "TP4056 Type-C USB 5V 1A 18650 Lithium Battery Charger Module wi
 - EEMB cells usually have their own protection board under the tape, so with the TP4056's protection there would be two layers. Not verified for this cell.
 - Rough runtime at about 130 mA: **7–8 hours** with the C6 board's always-on firmware (less after boost losses). Going much longer would need firmware changes: dim or switch off the backlight, and turn Wi-Fi off between updates.
 
-### All-in-one LiPo module: "LiPo Battery Module, USB-C Rechargeable 1200mAh, 3.3V 5V USB Output"
-- **Probably the NULLLAB PM11** that the Yellow Pad notes already plan around (docs: https://github.com/nulllaborg/pm11-module). Not confirmed. If it is, what the Yellow Pad notes say about it:
-  - 1200 mAh LiPo, boost to 5 V/1.2 A, USB-C charging (about 1 hour), 4-LED gauge, slide switch, 56×40 mm with two M4 holes.
-  - **No low-battery cutoff.** Switch it off after use and recharge when only one LED is lit.
-  - **Not a UPS:** plugging or unplugging USB-C while running will likely reset the board.
-  - With the switch off and USB-C plugged in, USB powers the board and the battery stays out of the circuit.
-  - Still to check: whether it auto-shuts off at light load. Run a board on it for 30+ minutes.
+### NULLLAB PM11 all-in-one LiPo module
+Listed as "LiPo Battery Module, USB-C Rechargeable 1200mAh, 3.3V 5V USB Output". Confirmed (2026-10-28): it is the **NULLLAB PM11** that the Yellow Pad notes plan around. Docs: https://github.com/nulllaborg/pm11-module
+- 1200 mAh LiPo, USB-C charging at up to 1.2 A (about 1 hour from empty), 4-LED gauge, slide switch, 56×40 mm with two M4 holes.
+- Outputs (2 A total across all of them):
+  - **USB-A socket, 5 V.** Shares a 1.2 A rail with the 5 V header.
+  - **5 V header** (2-pin), 1.2 A max.
+  - **3.3 V header** (2-pin), 800 mA max.
+  - **BAT header** and **JST PH 2.0 socket:** raw cell voltage (3.7–4.2 V), not regulated.
+- Switch ON: the battery powers the outputs and charges from USB-C. Switch OFF: the battery is disconnected. If USB-C is plugged in, 5 V passes straight through to the outputs, but the battery doesn't charge.
+- LEDs show battery voltage: 4 = 75–100%, 3 = 50–75%, 2 = 25–50%, 1 = under 25%. They chase while charging and stay solid when full. They can dip briefly under load.
+- Protection against overcharge, reverse polarity and overload.
+- **No low-battery cutoff.** Switch it off after use and recharge when only one LED is lit. Running it flat can permanently damage the cell.
+- **Not a UPS:** plugging or unplugging USB-C while running will likely reset the board.
+- No auto shut-off at light load is documented. Still worth confirming by running a board on it for 30+ minutes.
+- For storage, leave it at about 2 LEDs and top it up every 3 months or so.
 - It combines the cell, charger and regulated outputs in one unit, so **it doesn't need the extra boost converter the TP4056 does.**
-- C6 board: either the **5 V USB output to its USB-C port** (no soldering), or the **3.3 V output to its 3V3 and GND pins**, which skips the board's regulator. Check the pins before connecting.
-- CYD: a short USB-A to micro-USB cable, or its 5 V header to the CYD's P1 connector (5V → VIN, GND → GND; check polarity against both pinouts).
+- C6 board: either the **USB-A 5 V output to its USB-C port** (USB-A to USB-C cable, no soldering), or the **3.3 V header to its 3V3 and GND pins**, which skips the board's regulator. Check the pins before connecting.
+- CYD: a short USB-A to micro-USB cable, or the 5 V header to the CYD's P1 connector (5V → VIN, GND → GND). **Never use the 3.3 V, BAT or JST outputs for the CYD.** See "Using the PM11 with the CYD" below.
 - Rough runtime (1200 mAh × 3.7 V ≈ 4.4 Wh, about 85% efficiency): **about 5–6 hours** from 5 V and **about 8–9 hours** from 3.3 V on the C6 board. The Yellow Pad notes estimate 5–8 hours on the CYD.
 
 ### 3 x AA battery pack, no electronics yet
@@ -96,12 +104,40 @@ If you ever want to lower it: the current is set by **R3** ("Rprog"), a tiny 060
 
 | Setup | Boards | Rechargeable | Rough runtime | Notes |
 |---|---|---|---|---|
-| All-in-one module (PM11?) → USB | both | yes | 5–6 h (C6), 5–8 h (CYD) | Simplest. No low-battery cutoff, resets when plugged in. |
+| NULLLAB PM11 → USB | both | yes | 5–6 h (C6), 5–8 h (CYD) | Simplest. No low-battery cutoff, resets when plugged in. |
 | EEMB LiPo → TP4056 → MiniBoost → 5 V/VIN | both | yes | about 6–7 h | Soldering needed. Two MiniBoosts means both boards can be wired this way. Charges at 1 A unless R3 is swapped. |
 | AAA holder → MiniBoost → 5 V/VIN | both | no (NiMH optional) | 5–6 h (C6), 3–5 h (CYD) | Switched, no soldering at the battery end. |
 | AA pack → MiniBoost → 5 V/VIN | both | no (NiMH optional) | 10–12 h (C6), 6–10 h (CYD) | Longest runtime. Needs a switch. |
 
 **Before connecting:** check that the JST plugs on the AAA holder, the EEMB cells and anything they plug into have the same polarity.
+
+## Using the PM11 with the CYD
+
+### First time
+1. Charge it: switch **ON**, plug a USB charger into its USB-C port. The LEDs chase while charging and go solid (all four) when full, about 1 hour. It ships at about 30%.
+2. Unplug USB-C and switch **OFF** before connecting anything.
+
+### Option A: USB cable (recommended, no soldering)
+1. Use a short **USB-A to micro-USB data or charge cable**. Plug the USB-A end into the PM11's USB-A socket and the micro-USB end into the CYD.
+2. Switch the PM11 **ON**. The CYD should boot and the Yellow Pad screen appear.
+3. Drive. Switch **OFF** when done.
+
+### Option B: wired to the P1 connector (neater for mounting)
+1. Make a two-wire lead: JST 1.25 mm 4-pin plug on the CYD end, and whatever fits the PM11's **5 V** header on the other (likely 2.54 mm Dupont; check it). Use only two wires, **VIN** and **GND**, and leave TX and RX unconnected.
+2. **Check polarity first.** The P1 order (VIN, TX, RX, GND) differs between CYD batches, and JST pre-made cables use random colors. With the PM11 ON and nothing attached, measure the 5 V header with a meter to find + and −. Then match it to VIN and GND on the CYD silkscreen.
+3. Switch OFF, plug in, switch ON.
+4. Don't plug in the CYD's micro-USB at the same time. Two 5 V sources would be tied together. To flash firmware, unplug the PM11 lead first.
+
+### Mounting
+Its 56×40 mm footprint and two M4 holes fit behind the CYD. Standoffs or double-sided foam tape work. Keep the slide switch and USB-C port reachable from the edge.
+
+### Day to day
+- **Switch OFF after every session.** No low-battery cutoff, so it will drain the cell even when idle.
+- Recharge when you're down to **one LED**. Expect about 5–8 hours of driving per charge.
+- Charge with the switch **ON**. If the switch is OFF, USB-C only passes through to the CYD and the battery doesn't charge.
+- Bench use: switch OFF, plug in USB-C, and the CYD runs from USB with the battery out of the circuit.
+- Don't plug or unplug USB-C while driving. The pad will probably reset, Bluetooth drops and the robot stops.
+- On the first long session, check that it doesn't shut itself off at the CYD's low draw (about 100–150 mA) after 30+ minutes.
 
 ## How a single 3.7 V LiPo is usually used (background)
 Every setup puts a charger and protection circuit next to the cell. After that it depends on the load:

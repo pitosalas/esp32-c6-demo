@@ -1,6 +1,7 @@
 #include <Arduino.h>
 // ROS 2 topic monitor. Connects to rosbridge over a WebSocket, lists topics via rosapi, subscribes to the
 // lightweight ones and shows how often each is publishing, plus the latest /rosout line.
+// To save power, topics stream only while the page is on screen (see rosSetVisible).
 
 #include <WebSocketsClient.h>
 #include <ArduinoJson.h>
@@ -41,6 +42,7 @@ static WebSocketsClient ws;
 static Topic topics[MAX_TOPICS];
 static int topicCount = 0;
 static bool connected = false;
+static bool streaming = false;  // the page is on screen, so all watched topics are subscribed
 static unsigned long nextTopicRefresh = 0, windowStart = 0;
 static char lastLog[96] = "";
 static int lastLogLevel = 0;
@@ -82,6 +84,18 @@ static void subscribe(const char *name) {
   sendJson(doc);
 }
 
+static void unsubscribe(const char *name) {
+  JsonDocument doc;
+  doc["op"] = "unsubscribe";
+  doc["topic"] = name;
+  sendJson(doc);
+}
+
+static bool isRosout(const char *name) { return strcmp(name, "/rosout") == 0; }
+
+// /rosout is always subscribed; the other watched topics only while streaming.
+static bool wantSubscribed(const Topic &t) { return t.watched && (streaming || isRosout(t.name)); }
+
 // Merges a fresh topic list into the table, subscribing to any new lightweight topics.
 static void handleTopicList(JsonObject values) {
   for (int i = 0; i < topicCount; i++) topics[i].present = false;
@@ -96,7 +110,7 @@ static void handleTopicList(JsonObject values) {
       memset(t, 0, sizeof *t);
       strlcpy(t->name, name, sizeof t->name);
       t->watched = !isHeavy(name, type);
-      if (t->watched) subscribe(name);
+      if (wantSubscribed(*t)) subscribe(name);
     }
     t->present = true;
   }
@@ -129,7 +143,7 @@ static void handleMessage(uint8_t *payload, size_t length) {
     t->lastSeen = millis();
   }
   // rosbridge logs every client connect/disconnect, including ours, so skip its own lines.
-  if (strcmp(name, "/rosout") == 0 && strcmp(doc["msg"]["name"] | "", "rosbridge_websocket") != 0) {
+  if (isRosout(name) && strcmp(doc["msg"]["name"] | "", "rosbridge_websocket") != 0) {
     snprintf(lastLog, sizeof lastLog, "%s: %s", doc["msg"]["name"] | "?", doc["msg"]["msg"] | "");
     lastLogLevel = doc["msg"]["level"] | 0;
   }
@@ -161,9 +175,27 @@ void rosBegin() {
   ws.setReconnectInterval(5000);
 }
 
+void rosSetVisible(bool visible) {
+  if (visible == streaming) return;
+  streaming = visible;
+  for (int i = 0; i < topicCount; i++) {
+    Topic &t = topics[i];
+    if (!t.watched || isRosout(t.name)) continue;
+    if (connected) {
+      if (streaming) subscribe(t.name);
+      else unsubscribe(t.name);
+    }
+    t.count = 0;
+    t.rate = 0;
+  }
+  windowStart = millis();
+  if (streaming) nextTopicRefresh = 0;  // pick up topics that appeared while hidden
+}
+
 void rosLoop() {
   ws.loop();
-  if (connected && millis() >= nextTopicRefresh) {
+  // While hidden, only fetch the topic list until /rosout is found; the rest waits for the page.
+  if (connected && (streaming || topicCount == 0) && millis() >= nextTopicRefresh) {
     nextTopicRefresh = millis() + TOPIC_REFRESH_MS;
     requestTopics();
   }
@@ -202,6 +234,8 @@ static void drawTopicRow(const Topic &t, int y) {
     strcpy(rate, "skip");
   } else if (!isActive(t)) {
     strcpy(rate, "-");
+  } else if (t.rate == 0) {
+    strcpy(rate, "...");  // active, but the first rate window since the page appeared isn't done
   } else if (t.rate >= 1000.0f / THROTTLE_MS - 0.5f) {
     snprintf(rate, sizeof rate, "%d+ Hz", 1000 / THROTTLE_MS);
   } else {

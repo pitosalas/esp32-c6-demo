@@ -43,6 +43,7 @@
 #define LCD_DC 15
 #define LCD_RST 21
 #define LCD_BL 22
+#define BACKLIGHT_LEVEL 110  // PWM, 0 = off, 255 = full; the backlight is a large part of the draw
 
 #define RGB_LED_PIN 8
 #define BOOT_BUTTON 9  // low when pressed; flips between pages
@@ -401,8 +402,7 @@ void setup() {
     Serial.println("gfx->begin() failed");
   }
   gfx->setTextWrap(false);
-  pinMode(LCD_BL, OUTPUT);
-  digitalWrite(LCD_BL, HIGH);
+  analogWrite(LCD_BL, BACKLIGHT_LEVEL);
 
   pinMode(BOOT_BUTTON, INPUT_PULLUP);
 
@@ -445,6 +445,7 @@ void loop() {
 
   if (buttonPressed() || millis() - pageShownAt >= PAGE_ROTATE_MS) {
     page = nextPage(page);
+    rosSetVisible(page == ROS_PAGE);
     pageShownAt = millis();
     redraw = true;
   }
