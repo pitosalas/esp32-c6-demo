@@ -12,6 +12,34 @@ Power supplies and runtimes are in [`POWER.md`](POWER.md). The Yellow Pad's runt
 - The ESP32 measures analog inputs against an internal reference, not its supply, and reads at most about 3.1 V. No analog pin is wired to a supply or the cell on either board. The original ESP32 (CYD) has no documented way to read its own supply. None is known for the C6 either (not checked against its reference manual).
 - Real measurement would take a two-resistor divider from the PM11's BAT header to an analog pin (GPIO 35 on the CYD, one of GPIO 0–5 on the C6). Ruled out for now: no wiring.
 - Unchecked: whether the Waveshare C6 board already has a battery input with a divider on an analog pin. Worth checking its schematic.
+- The PM11's 4 LEDs are voltage-based and not trusted.
+
+## Measuring charge with an added part (options, 2026-11-10)
+Not decided or bought. All read the cell through the PM11, not the regulated 5 V.
+
+| Option | Cost | Accuracy | Wiring | Notes |
+|---|---|---|---|---|
+| **MAX17048 fuel gauge** (Adafruit #5580), shown on the pad's status bar | $5.95 at Adafruit or DigiKey, plus shipping | Real state of charge (ModelGauge), a few % | 1 JST lead + 4 wires | Best result. Not on Amazon.com; the Amazon generic was about $20. Worth it when shipping is shared with other parts. |
+| **Inline USB meter** (FNIRSI, MakerHawk and similar), between the PM11's USB-A and the pad | about $10–15 on Amazon | Real count of mAh used | none | One-and-done. Zero it after each full charge. The PM11 gives about **750 mAh at 5 V** per charge (1200 mAh × 3.7 V × ~85% ÷ 5 V). Pick a model that keeps its count when power is cut. Draws a few mA itself. |
+| **Two-resistor divider** to GPIO 35 | pennies | 10–15% (voltage-based) | 2 resistors + cap | 100 kΩ + 100 kΩ from BAT+ to GND, midpoint to GPIO 35 (CYD P3), 0.1 µF at the pin. LiPo lookup table in firmware. |
+| **LiPo voltage display** clipped to the cell | a few $ (multi-packs) | voltage-based, like the LEDs | JST to the PM11 | Better resolution than the LEDs, same weakness. |
+
+### MAX17048 wiring (pad side)
+| From | To |
+|---|---|
+| PM11 JST PH socket (raw cell) | MAX17048 JST PH battery socket (check + / − on the lead) |
+| CYD CN1 3.3 V | MAX17048 VIN (powers only the I2C pull-ups; never 5 V) |
+| CYD CN1 GND | MAX17048 GND |
+| CYD CN1 GPIO 27 | MAX17048 SDA |
+| CYD CN1 GPIO 22 | MAX17048 SCL |
+
+- The chip runs from the battery, through the JST lead, and keeps tracking while the pad sleeps. It draws about 23 µA (3 µA in hibernate).
+- Leave the second JST socket (a pass-through), ALRT and QSTRT unconnected.
+- CN1 is a 4-pin JST 1.25 mm; the board's STEMMA QT is JST SH 1.0 mm, so it needs an adapter or a spliced cable. Check CN1's pin order on the silkscreen (it varies by batch).
+- Check first: 0 V between the PM11's JST negative and USB ground (some protection circuits switch the negative side), and whether BAT stays live with the switch OFF.
+- Firmware: `Wire.begin(27, 22)`, I2C address 0x36, Adafruit MAX1704X library. Show `Batt 74%` in the status bar only if the chip answers.
+- A connector so it can be unplugged is fine, but leave it plugged in: its estimate is best after watching the cell for a while, and a fresh start under load reads off. Plug it in with the pad off.
+- Generic Amazon boards: many are titled "MAX17043/MAX17048" but carry the older MAX17043, which the Adafruit library doesn't support. Check the spec and the chip marking, and look for a JST PH battery socket and onboard pull-ups.
 
 ## The approach: count runtime, saved to flash
 
@@ -53,8 +81,10 @@ Power supplies and runtimes are in [`POWER.md`](POWER.md). The Yellow Pad's runt
 ### Yellow Pad (CYD)
 - Inactive = no touch.
 - **Done (2026-11-10, flashed):** no touch for 2 minutes → backlight dims to `DIM_LEVEL` 12 (`DIM_AFTER_MS` in `main.cpp`). The waking touch is ignored until lifted, so a blind tap can't drive. A Bluetooth connect or disconnect also brightens it.
-- Next: after more minutes → backlight off (GPIO 21), then deep sleep, using the same `lastActivityMs` timer.
-- Wake: the touch controller's interrupt, GPIO 36 (`TOUCH_IRQ` in `main.cpp`), which can wake the chip from deep sleep (`ext0`).
+- **Done (2026-11-10, flashed, not yet tested to the point of sleeping):** no touch for 10 minutes (`SLEEP_AFTER_MS`) → backlight off and held low, ILI9341 sleep, deep sleep. The session's runtime continues through sleep (kept in RTC memory), with minutes asleep logged separately (`sleep_min`).
+- Wake: the touch controller's interrupt, GPIO 36 (`TOUCH_IRQ` in `main.cpp`), which can wake the chip from deep sleep (`ext0`). The waking touch is ignored until lifted.
+- Measured awake draw on 2026-11-10, after dimming: 0.05–0.1 A (0.05 dimmed, about 0.1 bright). Expected asleep: about 0.01–0.02 A (board loads only). To measure.
+- Full power-off after a longer idle: considered and **not wanted for now**. It would need a soft power switch (e.g. Pololu Mini Pushbutton Power Switch) between the PM11 and the CYD, with one GPIO to its OFF pin.
 - BLE drops while asleep and reconnects on wake, probably in a few seconds. That's safe: the robot stops when Bluetooth drops.
 - Limits: the AMS1117, CH340 and power LED keep drawing several mA, so sleep draw stays far above the chip's microamp figures.
 - To check: whether the PM11 switches itself off at very light loads. If it does, deep sleep could turn the pad off completely.
@@ -86,8 +116,8 @@ Power supplies and runtimes are in [`POWER.md`](POWER.md). The Yellow Pad's runt
 Fixed board loads that firmware can't reduce: the CYD's AMS1117, CH340 and power LED.
 
 ## Order
-1. Yellow Pad: runtime counting and the brownout record. It already uses NVS.
-2. Yellow Pad: sleep.
+1. Yellow Pad: runtime counting and the brownout record. It already uses NVS. (Done.)
+2. Yellow Pad: sleep. (Done; awaiting a sleep test and current reading.)
 3. Clock: the same runtime counting and brownout record, plus the gauge on screen.
 4. Clock: sleep, once the trigger is decided.
 
