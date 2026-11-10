@@ -50,7 +50,8 @@ Power supplies and runtimes are in [`POWER.md`](POWER.md). Nothing here is built
 
 ### Yellow Pad (CYD)
 - Inactive = no touch.
-- No touch for N minutes → backlight off (GPIO 21). After more minutes → deep sleep.
+- **Done (2026-11-10, built, not yet flashed):** no touch for 2 minutes → backlight dims to `DIM_LEVEL` 12 (`DIM_AFTER_MS` in `main.cpp`). The waking touch is ignored until lifted, so a blind tap can't drive. A Bluetooth connect or disconnect also brightens it.
+- Next: after more minutes → backlight off (GPIO 21), then deep sleep, using the same `lastActivityMs` timer.
 - Wake: the touch controller's interrupt, GPIO 36 (`TOUCH_IRQ` in `main.cpp`), which can wake the chip from deep sleep (`ext0`).
 - BLE drops while asleep and reconnects on wake, probably in a few seconds. That's safe: the robot stops when Bluetooth drops.
 - Limits: the AMS1117, CH340 and power LED keep drawing several mA, so sleep draw stays far above the chip's microamp figures.
