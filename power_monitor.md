@@ -2,7 +2,7 @@
 
 Goal: give both boards a battery gauge and a sleep mode, **using only the existing hardware: no new parts, not even a wire.**
 - The **C6 board**: the ESP32 clock ([`esp32_clock/`](esp32_clock/README.md)).
-- The **CYD**: the Yellow Pad ([`yellow_pad/`](yellow_pad/README.md)).
+- The **CYD**: the Yellow Pad, now in its own repo, [`dome_pad`](https://github.com/Boston-Robot-Hackers/dome_pad).
 
 Power supplies and runtimes are in [`POWER.md`](POWER.md). The Yellow Pad's runtime tracking and idle dimming are built and flashed; the rest is planned.
 
@@ -43,7 +43,7 @@ Not decided or bought. All read the cell through the PM11, not the regulated 5 V
 
 ## The approach: count runtime, saved to flash
 
-**Yellow Pad: check-ins, brownout record and "charged" reset done (2026-11-10, flashed, not yet tested on battery).** Saves once a minute rather than every 5. "Charged" is a 3 s press on the status bar (the thin strip at the top of the screen), not a Settings button (the tab is full). The runtime shows as `Run h:mm` at the left of the status bar. The brownout is a sticky flag that turns that text amber; the pad does not stop or sleep after a brownout. Saved in NVS namespace `yellowpad_pwr`. Details in `yellow_pad/NOTES.md`. Measured awake draw before dimming and before the ROS tab: about 0.1 A at 5 V, so about 7.5 h on the PM11 (about 5.5 h stopping at one LED). The ROS tab turns Wi-Fi on while it's showing, which will draw more.
+**Yellow Pad: check-ins, brownout record and "charged" reset done (2026-11-10, flashed, not yet tested on battery).** Saves once a minute rather than every 5. "Charged" is a 3 s press on the status bar (the thin strip at the top of the screen), not a Settings button (the tab is full). The runtime shows as `Run h:mm` at the left of the status bar. The brownout is a sticky flag that turns that text amber; the pad does not stop or sleep after a brownout. Saved in NVS namespace `yellowpad_pwr`. Details in dome_pad's `process/02-doc/notes.md`. Measured awake draw before dimming and before the ROS tab: about 0.1 A at 5 V, so about 7.5 h on the PM11 (about 5.5 h stopping at one LED). The ROS tab turns Wi-Fi on while it's showing, which will draw more.
 
 ### Storage
 | Storage | Survives a reset or deep sleep | Survives power loss | Use |

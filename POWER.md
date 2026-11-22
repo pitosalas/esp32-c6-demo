@@ -2,7 +2,7 @@
 
 Goal: run both boards away from the Mac's USB ports.
 - The **C6 board**: the ESP32 clock ([`esp32_clock/`](esp32_clock/README.md)).
-- The **CYD**: the Yellow Pad ([`yellow_pad/`](yellow_pad/README.md)).
+- The **CYD**: the Yellow Pad, now in its own repo, [`dome_pad`](https://github.com/Boston-Robot-Hackers/dome_pad).
 
 All runtimes below are estimates from typical numbers, not measurements.
 
@@ -15,7 +15,7 @@ All runtimes below are estimates from typical numbers, not measurements.
 - To check: whether this board has a LiPo connector and charger, which header pins accept 5 V or 3.3 V in, and how low its 3.3 V regulator can go.
 
 ### CYD (ESP32-2432S028R, "Cheap Yellow Display")
-- ESP32-D0WD-V3 with a 2.8 in 320x240 ILI9341 touch screen. Details are in [`yellow_pad/NOTES.md`](yellow_pad/NOTES.md), under "The hardware".
+- ESP32-D0WD-V3 with a 2.8 in 320x240 ILI9341 touch screen. Details are in dome_pad's `process/02-doc/notes.md`, under "The hardware".
 - USB is **micro-USB** (CH340). Don't use a USB-C to USB-C cable: the board lacks the resistors that make a USB-C source switch on.
 - Power in: 5 V through USB, or through the 4-pin JST 1.25 mm "P1" connector (VIN, TX, RX, GND). Its 3.3 V comes from an **AMS1117** regulator, which needs about 4.4 V in or more because it drops about 1.1 V.
 - **Measured (2026-11-10): about 0.1 A at 5 V**, with the CPU at 80 MHz and the backlight at half. That was before idle dimming and before the ROS tab (Wi-Fi). Earlier estimate: 100–150 mA, maybe up to 200 mA with the backlight at full.
@@ -133,7 +133,7 @@ Its 56×40 mm footprint and two M4 holes fit behind the CYD. Standoffs or double
 
 ### Day to day
 - **Switch OFF after every session.** No low-battery cutoff, so it will drain the cell even when idle.
-- Recharge when you're down to **one LED**. Expect about 5.5 hours of driving per charge (from the measured 0.1 A). The pad's `Run h:mm` counter shows the time used since you marked it charged (see `yellow_pad/NOTES.md`).
+- Recharge when you're down to **one LED**. Expect about 5.5 hours of driving per charge (from the measured 0.1 A). The pad's `Run h:mm` counter shows the time used since you marked it charged (see dome_pad's `process/02-doc/notes.md`).
 - Charge with the switch **ON**. If the switch is OFF, USB-C only passes through to the CYD and the battery doesn't charge.
 - Bench use: switch OFF, plug in USB-C, and the CYD runs from USB with the battery out of the circuit.
 - Don't plug or unplug USB-C while driving. The pad will probably reset, Bluetooth drops and the robot stops.
